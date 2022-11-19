@@ -82,41 +82,25 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
         } = this.instanceSettings.jsonData;
         // Implement a health check for your data source.
 
+        let success = true;
         // try {
         const arango = new Database({ url, databaseName });
-        // const collections = (await arango.listCollections()).filter((c) =>
-        //     c.name.match(collectionsRegex)
-        // );
-        let info = 'error';
+        let dbName = 'error';
+        let collections = 'error';
         try {
-            console.log(arango.get());
-            info = (await arango.get()).name;
+            dbName = (await arango.get()).name;
+            collections = (await arango.listCollections())
+                .filter((c) => c.name.match(collectionsRegex))
+                .map((c) => c.name)
+                .slice(0, 5)
+                .join(',');
         } catch (e: any) {
-            info = e.message;
+            success = false;
+            dbName = e.message;
         }
         return {
-            status: 'success',
-            message:
-                'Success ' +
-                JSON.stringify({
-                    url,
-                    databaseName,
-                    collectionsRegex,
-                    // collections: collections.map((c) => c.name),o
-                    info: info,
-                }),
+            status: success,
+            message: `db=${dbName}, collections=[${collections},...]`,
         };
-        // } catch (err) {
-        //     let message = 'Cannot connect';
-        //     if (_.isString(err)) {
-        //         message = err;
-        //     } else if ((err as Record<string, any>)['message']) {
-        //         message = (err as Record<string, any>)['message'];
-        //     }
-        //     return {
-        //         status: 'error',
-        //         message,
-        //     };
-        // }
     }
 }
