@@ -24,9 +24,6 @@ export class ConfigEditor extends PureComponent<Props, State> {
     onDbUrlChange = this.onPropChange('dbUrl');
     onDbNameChange = this.onPropChange('dbName');
     onCollectionsRegexChange = this.onPropChange('collectionsRegex');
-    componentDidMount() {
-        this.props.options.jsonData.collectionsRegex = '.*';
-    }
     /*
      *     // Secure field (only sent to the backend)
      *     onAPIKeyChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -63,7 +60,8 @@ export class ConfigEditor extends PureComponent<Props, State> {
         return (
             <div className="gf-form-group">
                 <div className="gf-form">
-                    <p>No authentication support for now</p>
+                    <p>No authentication support for now.</p>
+                    <p>Connection made from client side.</p>
                 </div>
                 <div className="gf-form">
                     <FormField
@@ -90,8 +88,8 @@ export class ConfigEditor extends PureComponent<Props, State> {
                         label="collectionsRegex"
                         labelWidth={6}
                         inputWidth={20}
-                        onChange={this.onDbUrlChange}
-                        value={jsonData.collectionsRegex || '.*'}
+                        onChange={this.onCollectionsRegexChange}
+                        value={jsonData.collectionsRegex || ''}
                         placeholder=".*"
                     />
                 </div>

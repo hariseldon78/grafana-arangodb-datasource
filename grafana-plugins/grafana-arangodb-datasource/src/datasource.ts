@@ -28,8 +28,11 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     }
     async setup() {
         const { collectionsRegex } = this.instanceSettings.jsonData;
-        this.collections = (await this.arango.listCollections()).filter((c) =>
-            c.name.match(collectionsRegex)
+        this.collections = (await this.arango.listCollections()).filter(
+            (c) =>
+                !collectionsRegex ||
+                collectionsRegex === '' ||
+                c.name.match(collectionsRegex)
         );
         console.log(this.collections);
     }
