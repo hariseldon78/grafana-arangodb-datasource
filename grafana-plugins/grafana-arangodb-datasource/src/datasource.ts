@@ -1,4 +1,3 @@
-import defaults from 'lodash/defaults';
 import { Database } from 'arangojs';
 import { CollectionMetadata } from 'arangojs/collection';
 import _ from 'lodash';
@@ -12,7 +11,7 @@ import {
     FieldType,
 } from '@grafana/data';
 
-import { MyQuery, MyDataSourceOptions, defaultQuery } from './types';
+import { MyQuery, MyDataSourceOptions } from './types';
 
 export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     arango: Database;
@@ -58,7 +57,43 @@ RETURN doc`,
         const to = range!.to.valueOf();
 
         // Return a constant for each query.
-        const data = options.targets.map((target) => {
+        let data = [];
+        for (const args of options.targets) {
+            if (!args.collectionName) {continue;}
+            const query = await this.arango.query({
+                query: `FOR doc IN @@collection
+FILTER doc[@timefield] >= date_timestamp(@from) AND doc[@timefield] <= date_timestamp(@to)
+SORT doc[@timefield]
+RETURN  {Time:doc[@timefield], Value:doc[@valuefield]}`,
+                bindVars: {
+                    '@collection': args.collectionName,
+                    timefield: args.timestampField,
+                    valuefield: args.valueField,
+                    from: from_,
+                    to: to,
+                },
+            });
+            const records = await query.all();
+            const times: number[] = records.map((r) => r.Time);
+            const values: number[] = records.map((r) => r.Value);
+            const frame = new MutableDataFrame({
+                refId: args.refId,
+                fields: [
+                    {
+                        name: 'Time',
+                        values: times,
+                        // values: [times[0], times[times.length - 1]],
+                        type: FieldType.time,
+                    },
+                    {
+                        name: 'Value',
+                        values: values,
+                        // values: [Math.min(...values), Math.max(...values)],
+                        type: FieldType.number,
+                    },
+                ],
+            });
+            data.push(frame);
             // const query = defaults(target, defaultQuery);
             // return new MutableDataFrame({
             //   refId: query.refId,
@@ -67,23 +102,24 @@ RETURN doc`,
             //     { name: 'Value', values: [query.constant, query.constant], type: FieldType.number },
             //   ],
             // });
-            const query = defaults(target, defaultQuery);
-            const frame = new MutableDataFrame({
-                refId: query.refId,
-                fields: [
-                    { name: 'time', type: FieldType.time },
-                    { name: 'value', type: FieldType.number },
-                ],
-            });
-            const duration = to - from_;
-            const step = duration / 1000;
-            for (let t = 0; t < duration; t += step) {
-                frame.add({
-                    time: from_ + t,
-                    value: Math.sin((2 * Math.PI * t) / duration),
-                });
-            }
-        });
+
+            // const query = defaults(target, defaultQuery);
+            // const frame = new MutableDataFrame({
+            //     refId: query.refId,
+            //     fields: [
+            //         { name: 'Time', type: FieldType.time },
+            //         { name: 'Value', type: FieldType.number },
+            //     ],
+            // });
+            // const duration = to - from_;
+            // const step = duration / 1000;
+            // for (let t = 0; t < duration; t += step) {
+            //     frame.add({
+            //         time: from_ + t,
+            //         value: Math.sin((2 * Math.PI * t) / duration),
+            //     });
+            // }
+        }
 
         return { data };
     }
