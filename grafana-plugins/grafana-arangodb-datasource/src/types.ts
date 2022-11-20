@@ -1,12 +1,14 @@
 import { DataQuery, DataSourceJsonData } from '@grafana/data';
 
 export interface MyQuery extends DataQuery {
-    queryText?: string;
-    constant: number;
+    collectionName: string;
+    timestampField: string;
+    valueField: string;
+    allFields: string[];
 }
 
 export const defaultQuery: Partial<MyQuery> = {
-    constant: 6.5,
+    allFields: [],
 };
 
 /**

@@ -36,6 +36,20 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
         );
         console.log(this.collections);
     }
+    async loadFieldsOf(collection: string): Promise<string[]> {
+        if (!this.collections.find((c) => c.name === collection)) {
+            return [];
+        }
+        const res = await this.arango.query({
+            query: `FOR doc IN @@collection
+LIMIT 1
+RETURN doc`,
+            bindVars: { '@collection': collection },
+        });
+        const fields = Object.keys(await res.next());
+        console.log(fields);
+        return fields;
+    }
 
     async query(options: DataQueryRequest<MyQuery>): Promise<DataQueryResponse> {
         console.log('ArangoDataSource query called:', { options });
