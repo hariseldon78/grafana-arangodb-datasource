@@ -59,66 +59,64 @@ RETURN doc`,
         // Return a constant for each query.
         let data = [];
         for (const args of options.targets) {
-            if (!args.collectionName) {continue;}
-            const query = await this.arango.query({
-                query: `FOR doc IN @@collection
+            if (!args.collectionName) {
+                continue;
+            }
+            let fieldsQuery = '';
+            const fieldsBinds: Record<string, string> = {};
+            for (const field of args.valueFields) {
+                let { name, alias } = field;
+                const i = Object.keys(fieldsBinds).length;
+                if (!name) {
+                    continue;
+                }
+                if (!alias) {
+                    alias = name;
+                }
+                fieldsQuery += '`' + alias + '`:doc[@valueField' + i + '],';
+                fieldsBinds['valueField' + i] = name;
+            }
+            const query = `FOR doc IN @@collection
 FILTER doc[@timefield] >= date_timestamp(@from) AND doc[@timefield] <= date_timestamp(@to)
 SORT doc[@timefield]
-RETURN  {Time:doc[@timefield], Value:doc[@valuefield]}`,
+RETURN  {Time:doc[@timefield], ${fieldsQuery}}`;
+            console.log(query);
+            const result = await this.arango.query({
+                query,
                 bindVars: {
                     '@collection': args.collectionName,
                     timefield: args.timestampField,
-                    valuefield: args.valueField,
+                    ...fieldsBinds,
                     from: from_,
                     to: to,
                 },
             });
-            const records = await query.all();
+            const records = await result.all();
             const times: number[] = records.map((r) => r.Time);
-            const values: number[] = records.map((r) => r.Value);
+            // const values: number[] = records.map((r) => r.Value);
             const frame = new MutableDataFrame({
                 refId: args.refId,
                 fields: [
                     {
                         name: 'Time',
                         values: times,
-                        // values: [times[0], times[times.length - 1]],
                         type: FieldType.time,
                     },
-                    {
-                        name: 'Value',
-                        values: values,
-                        // values: [Math.min(...values), Math.max(...values)],
-                        type: FieldType.number,
-                    },
+                    ...args.valueFields
+                        .filter((f) => !!f.name)
+                        .map((f) => ({
+                            name: f.alias ?? f.name ?? 'Value',
+                            values: records.map((r) => r[f.alias ?? f.name ?? 'Value']),
+                            type: FieldType.number,
+                        })),
+                    // {
+                    //     name: 'Value',
+                    //     values: values,
+                    //     type: FieldType.number,
+                    // },
                 ],
             });
             data.push(frame);
-            // const query = defaults(target, defaultQuery);
-            // return new MutableDataFrame({
-            //   refId: query.refId,
-            //   fields: [
-            //     { name: 'Time', values: [from, to], type: FieldType.time },
-            //     { name: 'Value', values: [query.constant, query.constant], type: FieldType.number },
-            //   ],
-            // });
-
-            // const query = defaults(target, defaultQuery);
-            // const frame = new MutableDataFrame({
-            //     refId: query.refId,
-            //     fields: [
-            //         { name: 'Time', type: FieldType.time },
-            //         { name: 'Value', type: FieldType.number },
-            //     ],
-            // });
-            // const duration = to - from_;
-            // const step = duration / 1000;
-            // for (let t = 0; t < duration; t += step) {
-            //     frame.add({
-            //         time: from_ + t,
-            //         value: Math.sin((2 * Math.PI * t) / duration),
-            //     });
-            // }
         }
 
         return { data };

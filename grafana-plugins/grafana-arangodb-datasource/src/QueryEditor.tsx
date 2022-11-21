@@ -1,7 +1,7 @@
 import defaults from 'lodash/defaults';
 
 import React, { PureComponent } from 'react';
-import { ActionMeta, InlineFormLabel, LegacyForms } from '@grafana/ui';
+import { ActionMeta, Button, InlineFormLabel, LegacyForms } from '@grafana/ui';
 import { QueryEditorProps, SelectableValue } from '@grafana/data';
 import { DataSource } from './datasource';
 import { defaultQuery, MyDataSourceOptions, MyQuery } from './types';
@@ -37,11 +37,69 @@ export class QueryEditor extends PureComponent<Props> {
         onChange(newVal as MyQuery);
     };
     onTimestampFieldChange = this.onSelectChange('timestampField');
-    onValueFieldChange = this.onSelectChange('valueField');
+    onValueFieldChange =
+        (i: number) => async (value: SelectableValue<string>, actionMeta: ActionMeta) => {
+            const { onChange, query } = this.props;
+            const valueFields = [...(query.valueFields ?? [])];
+            const old = valueFields[i] ?? {};
+            old.name = value.value ?? '';
+            valueFields[i] = old;
+            const newVal: Record<string, any> = {
+                ...query,
+                valueFields,
+            };
+            onChange(newVal as MyQuery);
+            console.log(query);
+        };
+    onAddField = async () => {
+        const { onChange, query } = this.props;
+        const valueFields = [...(query.valueFields ?? [])];
+        valueFields.push({});
+        const newVal: Record<string, any> = {
+            ...query,
+            valueFields,
+        };
+        onChange(newVal as MyQuery);
+    };
+    onRemoveField = (i: number) => async () => {
+        console.log('onRemoveField:', i);
+        const { onChange, query } = this.props;
+        const valueFields = [...(query.valueFields ?? [])];
+        valueFields.splice(i, 1);
+        const newVal: Record<string, any> = {
+            ...query,
+            valueFields,
+        };
+        onChange(newVal as MyQuery);
+    };
     render() {
         const query = defaults(this.props.query, defaultQuery);
-        const { collectionName, timestampField, valueField, allFields } = query;
+        const { collectionName, timestampField, valueFields, allFields } = query;
 
+        const fields = [];
+        for (let i = 0; i < valueFields.length; ++i) {
+            const valueField = valueFields[i].name;
+            fields.push(
+                <div className="gf-form">
+                    <InlineFormLabel width={10}>Value field {i}</InlineFormLabel>
+                    <Select
+                        width={15}
+                        placeholder={'(none)'}
+                        defaultValue={0}
+                        options={allFields.map((f) => ({
+                            label: f,
+                            value: f,
+                        }))}
+                        value={{ label: valueField, value: valueField }}
+                        allowCustomValue={false}
+                        onChange={this.onValueFieldChange(i)}
+                    />
+                    <Button value={i} onClick={this.onRemoveField(i)}>
+                        Remove
+                    </Button>
+                </div>
+            );
+        }
         return (
             <div>
                 <div className="gf-form">
@@ -74,21 +132,8 @@ export class QueryEditor extends PureComponent<Props> {
                         onChange={this.onTimestampFieldChange}
                     />
                 </div>
-                <div className="gf-form">
-                    <InlineFormLabel width={10}>Value field</InlineFormLabel>
-                    <Select
-                        width={30}
-                        placeholder={'(none)'}
-                        defaultValue={0}
-                        options={allFields.map((f) => ({
-                            label: f,
-                            value: f,
-                        }))}
-                        value={{ label: valueField, value: valueField }}
-                        allowCustomValue={false}
-                        onChange={this.onValueFieldChange}
-                    />
-                </div>
+                {fields}
+                <Button onClick={this.onAddField}>Add field</Button>
             </div>
         );
     }
