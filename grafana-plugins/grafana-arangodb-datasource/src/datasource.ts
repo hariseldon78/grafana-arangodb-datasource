@@ -1,4 +1,5 @@
 import { Database } from 'arangojs';
+import dayjs from 'dayjs';
 import { CollectionMetadata } from 'arangojs/collection';
 import _ from 'lodash';
 
@@ -11,8 +12,24 @@ import {
     FieldType,
 } from '@grafana/data';
 
-import { MyQuery, MyDataSourceOptions } from './types';
+import { MyQuery, MyDataSourceOptions, Field } from './types';
+const customParseFormat = require('dayjs/plugin/customParseFormat');
+dayjs.extend(customParseFormat);
+let advancedFormat = require('dayjs/plugin/advancedFormat');
+dayjs.extend(advancedFormat);
 
+function isValidDate(x: any) {
+    const d = dayjs(x);
+    return (
+        d.isValid() &&
+        d.isBefore(dayjs('2099-12-31T23:59:59Z')) &&
+        d.isAfter(dayjs('2000-01-01T00:00:00Z'))
+    );
+}
+function isValidUnixTimestamp(x: any) {
+    const d = dayjs(x, 'x', true);
+    return d.isValid();
+}
 export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     arango: Database;
     collections: CollectionMetadata[] = [];
@@ -35,9 +52,12 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
         );
         console.log(this.collections);
     }
-    async loadFieldsOf(collection: string): Promise<string[]> {
+    async loadFieldsOf(collection: string): Promise<{
+        time: Field[];
+        number_: Field[];
+    }> {
         if (!this.collections.find((c) => c.name === collection)) {
-            return [];
+            return { time: [], number_: [] };
         }
         const res = await this.arango.query({
             query: `FOR doc IN @@collection
@@ -45,9 +65,18 @@ LIMIT 1
 RETURN doc`,
             bindVars: { '@collection': collection },
         });
-        const fields = Object.keys(await res.next());
-        console.log(fields);
-        return fields;
+        const resObj = await res.next();
+        const fields = Object.keys(resObj);
+        const ret = {
+            time: fields
+                .filter((fk) => isValidDate(resObj[fk]))
+                .map((fk) => ({ name: fk, example: resObj[fk] })),
+            number_: fields
+                .filter((fk) => _.isNumber(resObj[fk]))
+                .map((fk) => ({ name: fk, example: resObj[fk] })),
+        };
+        console.log(ret);
+        return ret;
     }
 
     async query(options: DataQueryRequest<MyQuery>): Promise<DataQueryResponse> {
@@ -87,7 +116,7 @@ RETURN doc`,
                 fieldsBinds['valueField' + i] = name;
             }
             const query = `FOR doc IN @@collection
-FILTER doc[@timefield] >= date_timestamp(@from) AND doc[@timefield] <= date_timestamp(@to)
+FILTER date_timestamp(doc[@timefield]) >= date_timestamp(@from) AND date_timestamp(doc[@timefield]) <= date_timestamp(@to)
 SORT doc[@timefield]
 RETURN  {Time:doc[@timefield], ${fieldsQuery}}`;
             console.log(query);
@@ -102,7 +131,14 @@ RETURN  {Time:doc[@timefield], ${fieldsQuery}}`;
                 },
             });
             const records = await result.all();
-            const times: number[] = records.map((r) => r.Time);
+            const timeSample = records[0].Time;
+            let times: number[];
+            if (isValidUnixTimestamp(timeSample)) {
+                times = records.map((r) => r.Time);
+            } else {
+                times = records.map((r) => dayjs(r.Time).valueOf());
+            }
+            console.log(isValidUnixTimestamp(timeSample), timeSample);
             // const values: number[] = records.map((r) => r.Value);
             const frame = new MutableDataFrame({
                 refId: args.refId,

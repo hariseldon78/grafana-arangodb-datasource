@@ -4,7 +4,7 @@ import React, { ChangeEvent, PureComponent } from 'react';
 import { ActionMeta, Button, InlineFormLabel, LegacyForms } from '@grafana/ui';
 import { QueryEditorProps, SelectableValue } from '@grafana/data';
 import { DataSource } from './datasource';
-import { defaultQuery, MyDataSourceOptions, MyQuery } from './types';
+import { defaultQuery, MyDataSourceOptions, Field, MyQuery } from './types';
 
 const { FormField, Select } = LegacyForms;
 
@@ -28,11 +28,14 @@ export class QueryEditor extends PureComponent<Props> {
         actionMeta: ActionMeta
     ) => {
         const { onChange, query } = this.props;
+        const { time, number_ } = await this.props.datasource.loadFieldsOf(
+            value.value as string
+        );
         const newVal: Record<string, any> = {
             ...query,
             collectionName: value.value as string,
-
-            allFields: await this.props.datasource.loadFieldsOf(value.value as string),
+            allTimeFields: time,
+            allNumberFields: number_,
         };
         onChange(newVal as MyQuery);
     };
@@ -77,8 +80,17 @@ export class QueryEditor extends PureComponent<Props> {
     };
     render() {
         const query = defaults(this.props.query, defaultQuery);
-        const { collectionName, prefix, timestampField, valueFields, allFields } = query;
+        const {
+            collectionName,
+            prefix,
+            timestampField,
+            valueFields,
+            allTimeFields,
+            allNumberFields,
+        } = query;
 
+        const fieldLabel = (f: Field) =>
+            f.example ? f.name + ' (' + f.example + ')' : f.name;
         const fields = [];
         for (let i = 0; i < valueFields.length; ++i) {
             const valueField = valueFields[i].name;
@@ -89,9 +101,9 @@ export class QueryEditor extends PureComponent<Props> {
                         width={15}
                         placeholder={'(none)'}
                         defaultValue={0}
-                        options={allFields.map((f) => ({
-                            label: f,
-                            value: f,
+                        options={allNumberFields.map((f) => ({
+                            label: fieldLabel(f),
+                            value: f.name,
                         }))}
                         value={{ label: valueField, value: valueField }}
                         allowCustomValue={false}
@@ -108,7 +120,7 @@ export class QueryEditor extends PureComponent<Props> {
                 <div className="gf-form">
                     <InlineFormLabel width={10}>Collection</InlineFormLabel>
                     <Select
-                        width={10}
+                        width={30}
                         placeholder={'(none)'}
                         defaultValue={0}
                         options={this.props.datasource.collections.map((c) => ({
@@ -119,10 +131,12 @@ export class QueryEditor extends PureComponent<Props> {
                         allowCustomValue={false}
                         onChange={this.onCollectionChange}
                     />
+                </div>
+                <div className="gf-form">
                     <FormField
                         label="Prefix"
-                        labelWidth={6}
-                        inputWidth={10}
+                        labelWidth={10}
+                        inputWidth={30}
                         onChange={this.onPrefixChange}
                         value={prefix}
                         placeholder="http://arango:8529"
@@ -134,12 +148,12 @@ export class QueryEditor extends PureComponent<Props> {
                         width={30}
                         placeholder={'(none)'}
                         defaultValue={0}
-                        options={allFields.map((f) => ({
-                            label: f,
-                            value: f,
+                        options={allTimeFields.map((f) => ({
+                            label: fieldLabel(f),
+                            value: f.name,
                         }))}
                         value={{ label: timestampField, value: timestampField }}
-                        allowCustomValue={false}
+                        allowCustomValue={true}
                         onChange={this.onTimestampFieldChange}
                     />
                 </div>

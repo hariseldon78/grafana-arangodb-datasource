@@ -2,6 +2,7 @@ import { DataQuery, DataSourceJsonData } from '@grafana/data';
 
 export interface Field {
     name?: string;
+    example?: string;
     alias?: string;
 }
 
@@ -10,11 +11,13 @@ export interface MyQuery extends DataQuery {
     prefix?: string;
     timestampField: string;
     valueFields: Field[];
-    allFields: string[];
+    allTimeFields: Field[];
+    allNumberFields: Field[];
 }
 
 export const defaultQuery: Partial<MyQuery> = {
-    allFields: [],
+    allTimeFields: [],
+    allNumberFields: [],
     valueFields: [],
 };
 
