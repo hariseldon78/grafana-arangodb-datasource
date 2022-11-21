@@ -1,6 +1,6 @@
-* This plugin is working but still in beta version. 
+# This plugin is working but still in beta version. 
 
-** TODO:
+## TODO:
 - create proper backend
 - document installation
 - sign plugin and submit to grafana project
