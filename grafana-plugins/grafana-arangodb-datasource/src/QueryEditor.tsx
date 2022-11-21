@@ -1,12 +1,12 @@
 import defaults from 'lodash/defaults';
 
-import React, { PureComponent } from 'react';
+import React, { ChangeEvent, PureComponent } from 'react';
 import { ActionMeta, Button, InlineFormLabel, LegacyForms } from '@grafana/ui';
 import { QueryEditorProps, SelectableValue } from '@grafana/data';
 import { DataSource } from './datasource';
 import { defaultQuery, MyDataSourceOptions, MyQuery } from './types';
 
-const { /* FormField, */ Select } = LegacyForms;
+const { FormField, Select } = LegacyForms;
 
 type Props = QueryEditorProps<DataSource, MyQuery, MyDataSourceOptions>;
 
@@ -62,7 +62,6 @@ export class QueryEditor extends PureComponent<Props> {
         onChange(newVal as MyQuery);
     };
     onRemoveField = (i: number) => async () => {
-        console.log('onRemoveField:', i);
         const { onChange, query } = this.props;
         const valueFields = [...(query.valueFields ?? [])];
         valueFields.splice(i, 1);
@@ -72,9 +71,13 @@ export class QueryEditor extends PureComponent<Props> {
         };
         onChange(newVal as MyQuery);
     };
+    onPrefixChange = async (event: ChangeEvent<HTMLInputElement>) => {
+        const { onChange, query } = this.props;
+        onChange({ ...query, prefix: event.target.value });
+    };
     render() {
         const query = defaults(this.props.query, defaultQuery);
-        const { collectionName, timestampField, valueFields, allFields } = query;
+        const { collectionName, prefix, timestampField, valueFields, allFields } = query;
 
         const fields = [];
         for (let i = 0; i < valueFields.length; ++i) {
@@ -105,7 +108,7 @@ export class QueryEditor extends PureComponent<Props> {
                 <div className="gf-form">
                     <InlineFormLabel width={10}>Collection</InlineFormLabel>
                     <Select
-                        width={30}
+                        width={10}
                         placeholder={'(none)'}
                         defaultValue={0}
                         options={this.props.datasource.collections.map((c) => ({
@@ -115,6 +118,14 @@ export class QueryEditor extends PureComponent<Props> {
                         value={{ label: collectionName, value: collectionName }}
                         allowCustomValue={false}
                         onChange={this.onCollectionChange}
+                    />
+                    <FormField
+                        label="Prefix"
+                        labelWidth={6}
+                        inputWidth={10}
+                        onChange={this.onPrefixChange}
+                        value={prefix}
+                        placeholder="http://arango:8529"
                     />
                 </div>
                 <div className="gf-form">

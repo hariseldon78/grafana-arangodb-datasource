@@ -58,6 +58,14 @@ RETURN doc`,
 
         // Return a constant for each query.
         let data = [];
+        const fieldAlias = (
+            name: string,
+            alias: string | undefined,
+            prefix: string | undefined
+        ) => {
+            const al = alias ?? name ?? '';
+            return prefix ? prefix + '_' + al : al;
+        };
         for (const args of options.targets) {
             if (!args.collectionName) {
                 continue;
@@ -70,10 +78,12 @@ RETURN doc`,
                 if (!name) {
                     continue;
                 }
-                if (!alias) {
-                    alias = name;
-                }
-                fieldsQuery += '`' + alias + '`:doc[@valueField' + i + '],';
+                fieldsQuery +=
+                    '`' +
+                    fieldAlias(name, alias, args.prefix) +
+                    '`:doc[@valueField' +
+                    i +
+                    '],';
                 fieldsBinds['valueField' + i] = name;
             }
             const query = `FOR doc IN @@collection
@@ -104,11 +114,18 @@ RETURN  {Time:doc[@timefield], ${fieldsQuery}}`;
                     },
                     ...args.valueFields
                         .filter((f) => !!f.name)
-                        .map((f) => ({
-                            name: f.alias ?? f.name ?? 'Value',
-                            values: records.map((r) => r[f.alias ?? f.name ?? 'Value']),
-                            type: FieldType.number,
-                        })),
+                        .map((f) => {
+                            const alias = fieldAlias(
+                                f.name ?? 'Value',
+                                f.alias,
+                                args.prefix
+                            );
+                            return {
+                                name: alias,
+                                values: records.map((r) => r[alias]),
+                                type: FieldType.number,
+                            };
+                        }),
                     // {
                     //     name: 'Value',
                     //     values: values,

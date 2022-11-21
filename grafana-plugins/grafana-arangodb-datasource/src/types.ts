@@ -7,6 +7,7 @@ export interface Field {
 
 export interface MyQuery extends DataQuery {
     collectionName: string;
+    prefix?: string;
     timestampField: string;
     valueFields: Field[];
     allFields: string[];
