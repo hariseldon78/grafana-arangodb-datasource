@@ -96,7 +96,7 @@ RETURN doc`,
             return prefix ? prefix + '_' + al : al;
         };
         for (const args of options.targets) {
-            if (!args.collectionName) {
+            if (!args.collectionName || args.hide) {
                 continue;
             }
             let fieldsQuery = '';
