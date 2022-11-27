@@ -44,12 +44,14 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     }
     async setup() {
         const { collectionsRegex } = this.instanceSettings.jsonData;
-        this.collections = (await this.arango.listCollections()).filter(
-            (c) =>
-                !collectionsRegex ||
-                collectionsRegex === '' ||
-                c.name.match(collectionsRegex)
-        );
+        this.collections = (await this.arango.listCollections())
+            .filter(
+                (c) =>
+                    !collectionsRegex ||
+                    collectionsRegex === '' ||
+                    c.name.match(collectionsRegex)
+            )
+            .sort((a, b) => (a.name < b.name ? 1 : -1));
         console.log(this.collections);
     }
     async loadFieldsOf(collection: string): Promise<{
@@ -61,8 +63,8 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
         }
         const res = await this.arango.query({
             query: `FOR doc IN @@collection
-LIMIT 1
-RETURN doc`,
+                       LIMIT 1
+                       RETURN doc`,
             bindVars: { '@collection': collection },
         });
         const resObj = await res.next();
