@@ -133,7 +133,7 @@ RETURN  {Time:doc[@timefield], ${fieldsQuery}}`;
                 },
             });
             const records = await result.all();
-            const timeSample = records[0].Time;
+            const timeSample = records[0]?.Time;
             let times: number[];
             if (isValidUnixTimestamp(timeSample)) {
                 times = records.map((r) => r.Time);
