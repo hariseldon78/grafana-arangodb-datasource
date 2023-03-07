@@ -6,7 +6,6 @@ isolate-*-v8.log
 .idea
 *.egg-info
 build/
-dist/
 *.pyc
 npm-debug.log
 venv
